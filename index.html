@@ -221,21 +221,16 @@
             // get updates from the server for where the balls should be and how they should be moving
             gunBalls.map(function(val, key){
                 if( val && typeof val.id !== 'undefined' && parseInt(val.id) >= 0 && parseInt(val.id) < maxBalls ){ // If the id is set, assume it a valid ball object. TODO: Validate this better.
-                    // look for the shape in the array
-                    if( shapeList[key] ){
-                        // if it's here, update the shape
-                        updatePosition(shapeList[key],val);
-                        // and store the state
-                        objectList[key] = val;
-                    }else{
-                        // if it's not here, make a new one
+                    // store the state I got from the server
+                    objectList[key] = val;
+                    // If there is no shape for this state
+                    if( typeof shapeList[key] === 'undefined' || shapeList[key] === null ){
+                        // make a new one
                         shapeList[key] = new createjs.Shape();
-                        // update the shape
-                        updatePosition( shapeList[key], val);
                         // add it to the stage
                         stage.addChild(shapeList[key]);
-                        // store the state
-                        objectList[key] = val;
+                        // put it in the right spot
+                        moveIt( shapeList[key], val, Date.now());
                     }
                     // flush changes
                     stage.update();

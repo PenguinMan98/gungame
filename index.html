@@ -64,6 +64,9 @@
         var maxBalls = 8;
         var stageWidth = 600;
         var stageHeight = 400;
+        var slowSpeed = 5; // 5 pixels per second
+        var medSpeed = 25; // 10 px/s
+        var fastSpeed = 50; // 15 px/s
 
         $(function(){
             var gun = Gun(gunServer).get('penguinman98/4');
@@ -117,12 +120,14 @@
 
                         // build the state
                         objectList[circleName] = {
+                            x0: x,
+                            y0: y,
                             x: x,
                             y: y,
                             r: constR,
                             id: i,
                             vx: 0,
-                            vy: 1,
+                            vy: fastSpeed,
                             ax: 0,
                             ay: 0,
                             lastAction: Date.now(),
@@ -159,8 +164,9 @@
              * Responsible for the maths (e.g. the newtonian mechanics)
              * @param shape
              * @param state
+             * @param ts    The timestamp to calculate the position relative to
              */
-            function moveIt( shape, state ){
+            function moveIt( shape, state, ts ){
                 var circleName = 'circle'+state.id;
                 // first, check to see if it's out of bounds
                 if( state.x < 0 - constR || state.x > stageWidth + constR  || state.y < 0 - constR || state.y > stageHeight + constR ){
@@ -170,29 +176,38 @@
                     gunBalls.path(circleName).put(null);
                     return;
                 }
-                if( state.vx != 0 || state.vy != 0 ){
+                // velocity is taken in pixels per second (px/s).
+                // positive means moving right or down.  Negative means left or up.
+                if( state.vx != 0 || state.vy != 0 ){// if the object has a velocity
                     // get my position and velocity at the last update
                     // look at the current timestamp
                     // calculate my current position
+                    var dt = (ts - state.lastStatusChange) / 1000; // now - last update
+                    var dx = state.vx * dt;
+                    var dy = state.vy * dt;
 
-                    state.x += state.vx;
-                    state.y += state.vy;
+                    state.x = state.x0 + dx;
+                    state.y = state.y0 + dy;
                 }
                 updatePosition( shape, state); // update my position
             }
 
+            /**
+             * HandleTick, redraw the scene.
+             */
             createjs.Ticker.on("tick", handleTick);
             function handleTick() {
                 // On each tick, redraw the scene
                 var thisCircle;
                 var thisState;
+                var thisInstant = Date.now();
 
                 for( var i = 0; i < maxBalls; i++ ){
                     circleName = 'circle' + i;
                     thisCircle = shapeList[circleName];
                     thisState = objectList[circleName];
                     if( !thisCircle ){ continue; } // if this shape id doesn't exist or is null, skip it
-                    moveIt( thisCircle, thisState );
+                    moveIt( thisCircle, thisState, thisInstant );
 
                 }
 

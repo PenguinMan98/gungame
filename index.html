@@ -1,10 +1,11 @@
 <html>
 <head>
     <style>
-        body{
+        body {
             background: #ddd;
         }
-        #game-canvas{
+
+        #game-canvas {
             height: 400px;
             width: 600px;
             background: #bbb;
@@ -12,256 +13,287 @@
     </style>
 </head>
 <body>
-    <h1>Gun Game</h1>
+<h1>Gun Game</h1>
 
-    <canvas id="game-canvas" width="600" height="400" />
+<canvas id="game-canvas" width="600" height="400"/>
 
-    <script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
-    <script src="https://rawgit.com/amark/gun/master/gun.js"></script>
-    <script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
-    <script>
-        var gunServer = "https://gungame.herokuapp.com/gun";
+<script src="https://code.jquery.com/jquery-1.11.3.min.js"></script>
+<script src="https://rawgit.com/amark/gun/master/gun.js"></script>
+<script src="https://code.createjs.com/createjs-2015.11.26.min.js"></script>
+<script>
+    var gunServer = "https://gungame.herokuapp.com/gun";
 
-        var colors = [
-                "red",
-                "pink",
-                "blue",
-                "orange",
-                "green",
-                "purple",
-                "black",
-                "white",
-                "magenta",
-                "yellow",
-                "cyan"
-        ];
+    var colors = [
+        "red",
+        "pink",
+        "blue",
+        "orange",
+        "green",
+        "purple",
+        "black",
+        "white",
+        "magenta",
+        "yellow",
+        "cyan"
+    ];
 
-//        var gameApi = (function(window, $){
-//            console.log('loading gameapi');
-//            var gun;
-//            var self = this;
-//
-//
-//            var saveState = function( myGuid, x, y, r, color){
-//                console.log( 'put my state', myGuid, x, y, r, color );
-//            };
-//
-//            var publicApi = {
-//                init: function( gun ){
-//                    self.gun = gun;
-//                },
-//                saveMyState: function( s ){
-//                    saveState(s.myGuid, s.x, s.y, s.r, s.color );
-//                    self.gun.path(s.myGuid).put(s);
-//                }
-//            };
-//
-//            return publicApi;
-//        })(window, $);
-//
-//        console.log('gameapi is', gameApi);
-        var constR = 40;
-        var maxBalls = 12;
-        var stageWidth = 600;
-        var stageHeight = 400;
-        var slowSpeed = 10; // 10 pixels per second
-        var medSpeed = 30; // 30 px/s
-        var fastSpeed = 50; // 50 px/s
-        var gravity = 40; // 40 pixels per second per second
+    //        var gameApi = (function(window, $){
+    //            console.log('loading gameapi');
+    //            var gun;
+    //            var self = this;
+    //
+    //
+    //            var saveState = function( myGuid, x, y, r, color){
+    //                console.log( 'put my state', myGuid, x, y, r, color );
+    //            };
+    //
+    //            var publicApi = {
+    //                init: function( gun ){
+    //                    self.gun = gun;
+    //                },
+    //                saveMyState: function( s ){
+    //                    saveState(s.myGuid, s.x, s.y, s.r, s.color );
+    //                    self.gun.path(s.myGuid).put(s);
+    //                }
+    //            };
+    //
+    //            return publicApi;
+    //        })(window, $);
+    //
+    //        console.log('gameapi is', gameApi);
+    var constR = 40;
+    var maxBalls = 12;
+    var stageWidth = 600;
+    var stageHeight = 400;
+    var slowSpeed = 10; // 10 pixels per second
+    var medSpeed = 30; // 30 px/s
+    var fastSpeed = 50; // 50 px/s
+    var gravity = 40; // 40 pixels per second per second
 
-        $(function(){
-            var gun = Gun(gunServer).get('penguinman98/4');
-            var gunBalls = gun.path('balls');
+    $(function () {
+        var gun = Gun(gunServer).get('penguinman98/4');
+        var gunBalls = gun.path('balls');
 
-            //Create a stage by getting a reference to the canvas
-            var stage = new createjs.Stage("game-canvas");
-            //Create a Shape DisplayObject.
-            var circle = new createjs.Shape();
+        //Create a stage by getting a reference to the canvas
+        var stage = new createjs.Stage("game-canvas");
+        //Create a Shape DisplayObject.
+        var circle = new createjs.Shape();
 
-            var shapeList = {};
-            var objectList = {};
+        var shapeList = {};
+        var objectList = {};
 
-            console.log('checking for myGuid');
-            if(!localStorage.myGuid){
-                localStorage.myGuid = Math.floor((1 + Math.random()) * 0x100000000).toString(16).substring(1);
+        console.log('checking for myGuid');
+        if (!localStorage.myGuid) {
+            localStorage.myGuid = Math.floor((1 + Math.random()) * 0x100000000).toString(16).substring(1);
+        }
+        console.log('my guid', localStorage.myGuid);
+
+        var circleName;
+
+        stage.addEventListener('stagemousedown', handleStageClick);
+
+        function handleStageClick(evt) {
+            var circleClicked = stage.getObjectUnderPoint(evt.stageX, evt.stageY);
+            if (!circleClicked) {
+                addNewCircle(evt.stageX, evt.stageY);
+            } else {
+                // handle circle click
             }
-            console.log('my guid', localStorage.myGuid);
+        }
 
+        /**
+         * Add a new circle with some default values.
+         * Send it to the server
+         */
+        function addNewCircle(x, y) {
             var circleName;
+            var color;
+            var velocity;
 
-            stage.addEventListener('stagemousedown', handleStageClick);
+            for (var i = 0; i < maxBalls; i++) {
+                circleName = 'circle' + i;
+                if (!shapeList[circleName]) { // if this shape id doesn't exist or is null, then we can use it.
+                    // pick a color
+                    color = colors[Math.floor(Math.random() * colors.length)];
 
-            function handleStageClick( evt ){
-                var circleClicked = stage.getObjectUnderPoint(evt.stageX,evt.stageY);
-                if( !circleClicked ){
-                    addNewCircle(evt.stageX, evt.stageY);
-                }else{
-                    // handle circle click
-                }
-            }
+                    // pick a random x velocity -50px/s - 50px
+                    velocity = Math.ceil(Math.random() * 100) - 50;// generates -49 - +50
+                    velocity = (velocity <= 0 ) ? velocity - 1 : velocity; // sub one if less than or equal to 0. Allows -50, disallows 0.
 
-            /**
-             * Add a new circle with some default values.
-             * Send it to the server
-             */
-            function addNewCircle(x, y){
-                var circleName;
-                var color;
-                var velocity;
+                    // build the state
+                    objectList[circleName] = {
+                        x0: x,
+                        y0: y,
+                        x: x,
+                        y: y,
+                        r: constR,
+                        id: i,
+                        vx0: velocity,
+                        vy0: slowSpeed,
+                        vx: velocity,
+                        vy: slowSpeed,
+                        ax: 0,
+                        ay: gravity,
+                        lastAction: Date.now(),
+                        active: 1,
+                        selected: 0,
+                        owner: localStorage.myGuid,
+                        color: color,
+                        lastStatusChange: Date.now(),
+                        lastBounce: 0
+                    };
 
-                for( var i = 0; i < maxBalls; i++ ){
-                    circleName = 'circle' + i;
-                    if( !shapeList[circleName] ){ // if this shape id doesn't exist or is null, then we can use it.
-                        // pick a color
-                        color = colors[Math.floor(Math.random()*colors.length)];
-
-                        // pick a random x velocity -50px/s - 50px
-                        velocity = Math.ceil(Math.random() * 100) - 50;// generates -49 - +50
-                        velocity = (velocity <=0 ) ? velocity - 1 : velocity; // sub one if less than or equal to 0. Allows -50, disallows 0.
-
-                        // build the state
-                        objectList[circleName] = {
-                            x0: x,
-                            y0: y,
-                            x: x,
-                            y: y,
-                            r: constR,
-                            id: i,
-                            vx0: velocity,
-                            vy0: slowSpeed,
-                            vx: velocity,
-                            vy: slowSpeed,
-                            ax: 0,
-                            ay: gravity,
-                            lastAction: Date.now(),
-                            active: 1,
-                            selected: 0,
-                            owner: localStorage.myGuid,
-                            color: color,
-                            lastStatusChange: Date.now()
-                        };
-
-                        // create the circle
-                        shapeList[circleName] = new createjs.Shape();
-                        updatePosition( shapeList[circleName], objectList[circleName]);
-                        stage.addChild(shapeList[circleName]);
-                        stage.update();
-
-                        // send the results to the server
-                        gunBalls.path(circleName).put(objectList[circleName]);
-
-                        // kill the loop
-                        break;
-                    }
-                }
-            }
-
-            function updatePosition( circle, state ){
-                // redraw the circle
-                circle.graphics.beginFill( state.color).drawCircle(0, 0, state.r);
-                circle.x = state.x;
-                circle.y = state.y;
-            }
-
-            /**
-             * Responsible for the maths (e.g. the newtonian mechanics)
-             * @param shape
-             * @param state
-             * @param ts    The timestamp to calculate the position relative to
-             */
-            function moveIt( shape, state, ts ){
-                var circleName = 'circle'+state.id;
-                // first, check to see if it's out of bounds
-                if( state.x < 0 - constR || state.x > stageWidth + constR  || state.y < 0 - constR || state.y > stageHeight + constR ){
-                    // remove it if it is
-                    delete shapeList[circleName];
-                    delete objectList[circleName];
-                    gunBalls.path(circleName).put(null);
-                    return;
-                }
-                // acceleration is taken in pixels per second per second (px/s/s)
-                var dt, dvx, dvy, dx, dy;
-                if( state.ax != 0 || state.ay != 0 ){// if the object has an acceleration
-                    dt = (ts - state.lastStatusChange) / 1000; // now - last update
-                    // calculate the velocity change
-                    dvx = state.ax * dt;
-                    dvy = state.ay * dt;
-                    // update the velocity
-                    state.vx = state.vx0 + dvx;
-                    state.vy = state.vy0 + dvy;
-                }
-
-                // velocity is taken in pixels per second (px/s).
-                // positive means moving right or down.  Negative means left or up.
-                if( state.vx != 0 || state.vy != 0 ){// if the object has a velocity
-                    // get my position and velocity at the last update
-                    // look at the current timestamp
-                    dt = (ts - state.lastStatusChange) / 1000; // now - last update
-                    dx = state.vx * dt;
-                    dy = state.vy * dt;
-
-                    // calculate my current position
-                    state.x = state.x0 + dx;
-                    state.y = state.y0 + dy;
-                }
-                updatePosition( shape, state); // update my position
-            }
-
-            /**
-             * HandleTick, redraw the scene.
-             */
-            createjs.Ticker.on("tick", handleTick);
-            function handleTick() {
-                // On each tick, redraw the scene
-                var thisCircle;
-                var thisState;
-                var thisInstant = Date.now();
-
-                for( var i = 0; i < maxBalls; i++ ){
-                    circleName = 'circle' + i;
-                    thisCircle = shapeList[circleName];
-                    thisState = objectList[circleName];
-                    if( !thisCircle ){ continue; } // if this shape id doesn't exist or is null, skip it
-                    moveIt( thisCircle, thisState, thisInstant );
-
-                }
-
-                stage.update(); // subsequently calls tick() with the same param
-            }
-
-
-
-            console.log('beginning gun test');
-
-            // get updates from the server for where the balls should be and how they should be moving
-            gunBalls.map(function(val, key){
-                if( val && typeof val.id !== 'undefined' && parseInt(val.id) >= 0 && parseInt(val.id) < maxBalls ){ // If the id is set, assume it a valid ball object. TODO: Validate this better.
-                    // store the state I got from the server
-                    objectList[key] = val;
-                    // If there is no shape for this state
-                    if( typeof shapeList[key] === 'undefined' || shapeList[key] === null ){
-                        // make a new one
-                        shapeList[key] = new createjs.Shape();
-                        // add it to the stage
-                        stage.addChild(shapeList[key]);
-                        // put it in the right spot
-                        moveIt( shapeList[key], val, Date.now());
-                    }
-                    // flush changes
+                    // create the circle
+                    shapeList[circleName] = new createjs.Shape();
+                    updatePosition(shapeList[circleName], objectList[circleName]);
+                    stage.addChild(shapeList[circleName]);
                     stage.update();
-                }else{
-                    // invalid id or object is null
-                    if( shapeList[key] ){ // if the key exists
-                        stage.removeChild(shapeList[key]); // remove it.
-                        delete shapeList[key];
-                        delete objectList[key];
-                    }
-                    // flush changes
-                    stage.update();
+
+                    // send the results to the server
+                    gunBalls.path(circleName).put(objectList[circleName]);
+
+                    // kill the loop
+                    break;
                 }
-            });
+            }
+        }
+
+        function updatePosition(circle, state) {
+            // redraw the circle
+            circle.graphics.beginFill(state.color).drawCircle(0, 0, state.r);
+            circle.x = state.x;
+            circle.y = state.y;
+        }
+
+        /**
+         * Responsible for the maths (e.g. the newtonian mechanics)
+         * @param shape
+         * @param state
+         * @param ts    The timestamp to calculate the position relative to
+         */
+        function moveIt(shape, state, ts) {
+            var circleName = 'circle' + state.id;
+            // first, check to see if it's out of bounds
+            if (state.x < 0 - constR || state.x > stageWidth + constR || state.y < 0 - constR || state.y > stageHeight + constR) {
+                // remove it if it is
+                delete shapeList[circleName];
+                delete objectList[circleName];
+                gunBalls.path(circleName).put(null);
+                return;
+            }
+            // bounce!
+            //console.log('peeking at state.y', state.y, (stageHeight-constR), state.vy);
+            if (state.y >= (stageHeight - constR) && state.vy > 0){
+                //console.log('Attempting a bounce', state.ay, state.vy0, state.vy, state.y0, state.y, 'time', state.lastStatusChange, state.lastBounce);
+                state.lastBounce = Date.now();
+                // invert the velocity
+                state.vy *= -1;
+                // apply a dampening factor
+                state.vy *= .95;
+                state.vy0 = state.vy;
+                state.y0 = state.y = stageHeight - constR;
+                //console.log('Attempting a bounce', state.ay, state.vy0, state.vy, state.y0, state.y, 'time', state.lastStatusChange, state.lastBounce);
+            }
+            // acceleration is taken in pixels per second per second (px/s/s)
+            var dty, dtx, dvx, dvy, dx, dy;
+            if (state.ax != 0 || state.ay != 0) {// if the object has an acceleration
+                //console.log('acceleration', state.ay, state.vy0, state.vy, 'time', ts - state.lastStatusChange);
+                if( state.lastBounce ){
+                    dty = (ts - state.lastBounce) / 1000; // now - last update
+                    dtx = (ts - state.lastStatusChange) / 1000; // now - last update
+                } else {
+                    dtx = dty = (ts - state.lastStatusChange) / 1000; // now - last update
+                }
+                // calculate the velocity change
+                dvx = state.ax * dtx;
+                dvy = state.ay * dty;
+                // update the velocity
+                state.vx = state.vx0 + dvx;
+                state.vy = state.vy0 + dvy;
+                //console.log('acceleration', state.ay, state.vy0, state.vy, 'time', ts - state.lastStatusChange);
+            }
+
+            // velocity is taken in pixels per second (px/s).
+            // positive means moving right or down.  Negative means left or up.
+            if (state.vx != 0 || state.vy != 0) {// if the object has a velocity
+                //console.log('velocity', state.vy, state.y0, state.y, 'time', ts - state.lastStatusChange, ts - state.lastBounce);
+                // get my position and velocity at the last update
+                // look at the current timestamp
+                if( state.lastBounce ){
+                    dty = (ts - state.lastBounce) / 1000; // now - last update
+                    dtx = (ts - state.lastStatusChange) / 1000; // now - last update
+                }else{
+                    dtx = dty = (ts - state.lastStatusChange) / 1000; // now - last update
+                }
+
+
+                dx = state.vx * dtx;
+                dy = state.vy * dty;
+
+                // calculate my current position
+                state.x = state.x0 + dx;
+                state.y = state.y0 + dy;
+                //console.log('velocity', state.vy, state.y0, state.y, 'time', ts - state.lastStatusChange, ts - state.lastBounce);
+            }
+            updatePosition(shape, state); // update my position
+        }
+
+        /**
+         * HandleTick, redraw the scene.
+         */
+        createjs.Ticker.on("tick", handleTick);
+        function handleTick() {
+            // On each tick, redraw the scene
+            var thisCircle;
+            var thisState;
+            var thisInstant = Date.now();
+
+            for (var i = 0; i < maxBalls; i++) {
+                circleName = 'circle' + i;
+                thisCircle = shapeList[circleName];
+                thisState = objectList[circleName];
+                if (!thisCircle) {
+                    continue;
+                } // if this shape id doesn't exist or is null, skip it
+                moveIt(thisCircle, thisState, thisInstant);
+
+            }
+
+            stage.update(); // subsequently calls tick() with the same param
+        }
+
+
+        console.log('beginning gun test');
+
+        // get updates from the server for where the balls should be and how they should be moving
+        gunBalls.map(function (val, key) {
+            if (val && typeof val.id !== 'undefined' && parseInt(val.id) >= 0 && parseInt(val.id) < maxBalls) { // If the id is set, assume it a valid ball object. TODO: Validate this better.
+                // store the state I got from the server
+                objectList[key] = val;
+                // If there is no shape for this state
+                if (typeof shapeList[key] === 'undefined' || shapeList[key] === null) {
+                    // make a new one
+                    shapeList[key] = new createjs.Shape();
+                    // add it to the stage
+                    stage.addChild(shapeList[key]);
+                    // put it in the right spot
+                    moveIt(shapeList[key], val, Date.now());
+                }
+                // flush changes
+                stage.update();
+            } else {
+                // invalid id or object is null
+                if (shapeList[key]) { // if the key exists
+                    stage.removeChild(shapeList[key]); // remove it.
+                    delete shapeList[key];
+                    delete objectList[key];
+                }
+                // flush changes
+                stage.update();
+            }
         });
+    });
 
-    </script>
+</script>
 </body>
 </html>

@@ -61,12 +61,13 @@
 //
 //        console.log('gameapi is', gameApi);
         var constR = 40;
-        var maxBalls = 8;
+        var maxBalls = 12;
         var stageWidth = 600;
         var stageHeight = 400;
-        var slowSpeed = 5; // 5 pixels per second
-        var medSpeed = 25; // 10 px/s
-        var fastSpeed = 50; // 15 px/s
+        var slowSpeed = 10; // 10 pixels per second
+        var medSpeed = 30; // 30 px/s
+        var fastSpeed = 50; // 50 px/s
+        var gravity = 40; // 40 pixels per second per second
 
         $(function(){
             var gun = Gun(gunServer).get('penguinman98/4');
@@ -85,11 +86,6 @@
                 localStorage.myGuid = Math.floor((1 + Math.random()) * 0x100000000).toString(16).substring(1);
             }
             console.log('my guid', localStorage.myGuid);
-
-            /*circle.graphics.beginFill(myState.color).drawCircle(0, 0, myState.r);
-            circle.x = myState.x;
-            circle.y = myState.y;
-            stage.addChild(circle);*/
 
             var circleName;
 
@@ -126,10 +122,12 @@
                             y: y,
                             r: constR,
                             id: i,
+                            vx0: 0,
+                            vy0: slowSpeed,
                             vx: 0,
-                            vy: fastSpeed,
+                            vy: slowSpeed,
                             ax: 0,
-                            ay: 0,
+                            ay: gravity,
                             lastAction: Date.now(),
                             active: 1,
                             selected: 0,
@@ -176,16 +174,28 @@
                     gunBalls.path(circleName).put(null);
                     return;
                 }
+                // acceleration is taken in pixels per second per second (px/s/s)
+                var dt, dvx, dvy, dx, dy;
+                if( state.ax != 0 || state.ay != 0 ){// if the object has an acceleration
+                    dt = (ts - state.lastStatusChange) / 1000; // now - last update
+                    // calculate the velocity change
+                    dvx = state.ax * dt;
+                    dvy = state.ay * dt;
+                    // update the velocity
+                    state.vx = state.vx0 + dvx;
+                    state.vy = state.vy0 + dvy;
+                }
+
                 // velocity is taken in pixels per second (px/s).
                 // positive means moving right or down.  Negative means left or up.
                 if( state.vx != 0 || state.vy != 0 ){// if the object has a velocity
                     // get my position and velocity at the last update
                     // look at the current timestamp
-                    // calculate my current position
-                    var dt = (ts - state.lastStatusChange) / 1000; // now - last update
-                    var dx = state.vx * dt;
-                    var dy = state.vy * dt;
+                    dt = (ts - state.lastStatusChange) / 1000; // now - last update
+                    dx = state.vx * dt;
+                    dy = state.vy * dt;
 
+                    // calculate my current position
                     state.x = state.x0 + dx;
                     state.y = state.y0 + dy;
                 }
